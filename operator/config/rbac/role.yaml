@@ -1,0 +1,69 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ai-ran-orchestrator
+rules:
+  # QoSAwareWorkload CRD
+  - apiGroups: ["airan.io"]
+    resources: ["qosawareworkloads"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["airan.io"]
+    resources: ["qosawareworkloads/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["airan.io"]
+    resources: ["migpartitionconfigs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Deployments and StatefulSets for scaling
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale", "statefulsets/scale"]
+    verbs: ["get", "update", "patch"]
+  
+  # Pods for metrics and status
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  
+  # Nodes for placement validation
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  
+  # Events for status reporting
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  
+  # ConfigMaps for configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  
+  # Leases for leader election
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ai-ran-orchestrator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ai-ran-orchestrator
+subjects:
+  - kind: ServiceAccount
+    name: ai-ran-orchestrator
+    namespace: airan-system
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-ran-orchestrator
+  namespace: airan-system

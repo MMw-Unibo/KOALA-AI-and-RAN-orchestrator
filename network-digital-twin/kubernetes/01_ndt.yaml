@@ -1,0 +1,192 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ndt
+  labels:
+    name: ndt
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cell-mock
+  namespace: ndt
+spec:
+  template:
+    metadata:
+      labels:
+        app: cell-mock-app
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: data-producer
+          image: smontebugnoli/koala-cell:2.0-5060-mock
+          imagePullPolicy: Always
+          env:
+            - name: INFLUX_HOST
+              value: "http://influxdb.ndt.svc.cluster.local:8181"
+            - name: INFLUX_DB
+              value: "internet-5060"
+            - name: PUSH_INTERVAL
+              value: "-1"
+---
+# NDT Data
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: influxdb
+  namespace: ndt
+  labels:
+    app: influxdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: influxdb
+  template:
+    metadata:
+      labels:
+        app: influxdb
+    spec:
+      containers:
+        - name: influxdb
+          image: influxdb:3-core
+          ports:
+            - containerPort: 8181
+          command: ["influxdb3"]
+          args:
+            [
+              "serve",
+              "--node-id=node0",
+              "--object-store=file",
+              "--data-dir=/var/lib/influxdb3/data",
+              "--plugin-dir=/var/lib/influxdb3/plugins",
+              "--without-auth",
+            ]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: influxdb
+  namespace: ndt
+spec:
+  type: ClusterIP
+  selector:
+    app: influxdb
+  ports:
+    - name: http
+      port: 8181
+      targetPort: 8181
+---
+# Model
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ndt-model
+  namespace: ndt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ndt-model
+  template:
+    metadata:
+      labels:
+        app: ndt-model
+    spec:
+      # nodeSelector:
+      #   kubernetes.io/hostname: 
+      containers:
+        - name: ndt-model
+          image: smontebugnoli/koala-ndt-model:2.0-5060-30m
+          imagePullPolicy: Always
+          env:
+            - name: INFLUX_HOST
+              value: "http://influxdb.ndt.svc.cluster.local:8181"
+            - name: INFLUX_DB
+              value: "internet-5060"
+            - name: NETWORK_CELL
+              value: "5060"
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: ndt-model
+ namespace: ndt
+spec:
+ type: ClusterIP
+ selector:
+   app: ndt-model
+ ports:
+   - port: 50051
+     targetPort: 50051
+---
+# API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: ndt-api
+ namespace: ndt
+spec:
+ replicas: 1
+ selector:
+   matchLabels:
+     app: ndt-api
+ template:
+   metadata:
+     labels:
+       app: ndt-api
+   spec:
+     # nodeSelector:
+     #   kubernetes.io/hostname:s
+     containers:
+       - name: ndt-api
+         image: smontebugnoli/koala-ndt-api:2.0
+         imagePullPolicy: Always
+         ports:
+           - name: grpc
+             containerPort: 50051
+           - name: http-status
+             containerPort: 8080
+         env:
+           - name: MULTI_STEP_HOST
+             value: "ndt-model.ndt.svc.cluster.local:50051"
+           - name: INFLUX_HOST
+             value: "http://influxdb.ndt.svc.cluster.local:8181"
+           - name: INFLUX_DB
+             value: "internet-5060"
+           - name: NDT_NAMESPACE
+             value: "ndt"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ndt-api
+  namespace: ndt
+spec:
+  type: ClusterIP
+  selector:
+    app: ndt-api
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+    - name: http-status
+      port: 8080
+      targetPort: 8080
+---
+# PodMonitor for kube-prometheus (scrape orchestrator /metrics)
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: ndt-api-monitor
+  namespace: ndt
+  labels:
+    app: ndt-api
+spec:
+  selector:
+    matchLabels:
+      app: ndt-api
+  podMetricsEndpoints:
+    - port: http-status
+      path: /metrics
+      interval: 5s

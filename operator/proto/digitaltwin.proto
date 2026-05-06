@@ -1,0 +1,219 @@
+// Digital Twin Service Protocol Buffer Definition
+// This defines the gRPC interface for traffic prediction
+
+syntax = "proto3";
+
+package airan.digitaltwin.v1;
+
+option go_package = "github.com/airan/orchestrator/pkg/digitaltwin/v1;digitaltwinclient";
+
+// DigitalTwinService provides traffic prediction capabilities
+// for the AI-RAN QoS-Aware Orchestrator
+service DigitalTwinService {
+  // GetTrafficPrediction returns predicted traffic load for a given horizon
+  rpc GetTrafficPrediction(PredictionRequest) returns (PredictionResponse);
+  
+  // StreamPredictions provides continuous prediction updates
+  rpc StreamPredictions(PredictionRequest) returns (stream PredictionResponse);
+  
+  // GetHistoricalPattern returns historical traffic patterns for analysis
+  rpc GetHistoricalPattern(HistoricalRequest) returns (HistoricalResponse);
+  
+  // GetCellPredictions returns predictions for specific cells/gNBs
+  rpc GetCellPredictions(CellPredictionRequest) returns (CellPredictionResponse);
+  
+  // ReportActualLoad reports actual observed load for model feedback
+  rpc ReportActualLoad(ActualLoadReport) returns (ReportResponse);
+}
+
+// PredictionRequest specifies the prediction parameters
+message PredictionRequest {
+  // Horizon in minutes for prediction (e.g., 60 for 1 hour ahead)
+  int32 horizon_minutes = 1;
+  
+  // Optional: specific cell IDs to predict for
+  repeated string cell_ids = 2;
+  
+  // Optional: minimum confidence threshold (default 0.5)
+  float min_confidence = 3;
+  
+  // Optional: prediction granularity in minutes (default: 5)
+  int32 granularity_minutes = 4;
+  
+  // Optional: include prediction intervals
+  bool include_intervals = 5;
+}
+
+// PredictionResponse contains the traffic prediction results
+message PredictionResponse {
+  // Timestamp of when prediction was made (Unix timestamp)
+  int64 timestamp_unix = 1;
+  
+  // Predicted load normalized 0-1 (aggregate across all cells)
+  float predicted_load = 2;
+  
+  // Confidence score 0-1
+  float confidence = 3;
+  
+  // Breakdown by cell if requested
+  repeated CellPrediction cell_predictions = 4;
+  
+  // Prediction model version for traceability
+  string model_version = 5;
+  
+  // Time series of predictions if granularity was specified
+  repeated TimestampedPrediction time_series = 6;
+  
+  // Prediction intervals (if requested)
+  PredictionInterval interval = 7;
+}
+
+// CellPrediction contains prediction for a specific cell/gNB
+message CellPrediction {
+  string cell_id = 1;
+  float predicted_load = 2;
+  float confidence = 3;
+  
+  // Expected number of connected UEs
+  int32 predicted_ue_count = 4;
+  
+  // Expected throughput in Mbps
+  float predicted_throughput_mbps = 5;
+}
+
+// TimestampedPrediction for time series predictions
+message TimestampedPrediction {
+  int64 timestamp_unix = 1;
+  float predicted_load = 2;
+  float confidence = 3;
+}
+
+// PredictionInterval for uncertainty quantification
+message PredictionInterval {
+  float lower_bound_90 = 1;  // 90% confidence lower bound
+  float upper_bound_90 = 2;  // 90% confidence upper bound
+  float lower_bound_95 = 3;  // 95% confidence lower bound
+  float upper_bound_95 = 4;  // 95% confidence upper bound
+}
+
+// HistoricalRequest for retrieving historical patterns
+message HistoricalRequest {
+  // Period to look back in hours
+  int32 lookback_hours = 1;
+  
+  // Aggregation granularity in minutes
+  int32 granularity_minutes = 2;
+  
+  // Optional: specific cell IDs
+  repeated string cell_ids = 3;
+  
+  // Optional: day of week filter (0=Sunday, 6=Saturday)
+  repeated int32 day_of_week_filter = 4;
+}
+
+// HistoricalResponse contains historical traffic data
+message HistoricalResponse {
+  repeated TrafficDataPoint data_points = 1;
+  
+  // Statistical summary
+  TrafficStatistics statistics = 2;
+  
+  // Detected patterns
+  repeated TrafficPattern patterns = 3;
+}
+
+// TrafficDataPoint represents a historical measurement
+message TrafficDataPoint {
+  int64 timestamp_unix = 1;
+  float load = 2;
+  
+  // Optional: cell-level breakdown
+  map<string, float> cell_loads = 3;
+}
+
+// TrafficStatistics provides summary statistics
+message TrafficStatistics {
+  float mean_load = 1;
+  float std_dev = 2;
+  float min_load = 3;
+  float max_load = 4;
+  float p50_load = 5;  // median
+  float p90_load = 6;
+  float p99_load = 7;
+}
+
+// TrafficPattern describes detected periodic patterns
+message TrafficPattern {
+  string pattern_type = 1;  // e.g., "daily", "weekly", "event"
+  float period_hours = 2;
+  float amplitude = 3;
+  float phase_offset_hours = 4;
+  float confidence = 5;
+}
+
+// CellPredictionRequest for cell-specific predictions
+message CellPredictionRequest {
+  repeated string cell_ids = 1;
+  int32 horizon_minutes = 2;
+  bool include_handover_predictions = 3;
+}
+
+// CellPredictionResponse with detailed cell predictions
+message CellPredictionResponse {
+  repeated DetailedCellPrediction predictions = 1;
+  
+  // Inter-cell mobility predictions
+  repeated HandoverPrediction handover_predictions = 2;
+}
+
+// DetailedCellPrediction with comprehensive cell metrics
+message DetailedCellPrediction {
+  string cell_id = 1;
+  
+  // Load predictions
+  float predicted_load = 2;
+  float confidence = 3;
+  
+  // Resource predictions
+  int32 predicted_prb_utilization = 4;  // Physical Resource Block %
+  float predicted_cpu_utilization = 5;
+  float predicted_gpu_utilization = 6;
+  
+  // Traffic predictions
+  int32 predicted_ue_count = 7;
+  float predicted_dl_throughput_mbps = 8;
+  float predicted_ul_throughput_mbps = 9;
+  
+  // QoS predictions
+  float predicted_latency_ms = 10;
+  float predicted_packet_loss_rate = 11;
+}
+
+// HandoverPrediction for mobility predictions
+message HandoverPrediction {
+  string source_cell_id = 1;
+  string target_cell_id = 2;
+  int32 predicted_handover_count = 3;
+  float confidence = 4;
+}
+
+// ActualLoadReport for model feedback
+message ActualLoadReport {
+  int64 timestamp_unix = 1;
+  float actual_load = 2;
+  
+  // Cell-level actual loads
+  map<string, float> cell_loads = 3;
+  
+  // For correlation with predictions
+  string prediction_id = 4;
+}
+
+// ReportResponse acknowledges the load report
+message ReportResponse {
+  bool success = 1;
+  string message = 2;
+  
+  // Updated model accuracy based on feedback
+  float updated_accuracy = 3;
+}

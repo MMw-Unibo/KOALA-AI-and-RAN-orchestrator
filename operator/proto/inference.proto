@@ -1,0 +1,26 @@
+// Digital Twin inference service protocol buffer definition.
+//
+// Mirrors the proto served by the NDT orchestrator pod in the `ndt`
+// namespace (see network-digital-twin/docker/ndt-orchestrator/inference.proto).
+// Predictions are returned as an ordered list of scaled load values, one per
+// prediction step (PREDICTION_STEP_SECONDS on the server, default 600s).
+
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package ndt.inference;
+
+option go_package = "github.com/airan/orchestrator/pkg/digitaltwin/ndtpb;ndtpb";
+
+service Inference {
+  rpc make_inference(InferenceRequest) returns (InferenceResult) {}
+}
+
+message InferenceRequest {
+  google.protobuf.Timestamp datetime = 1;
+}
+
+message InferenceResult {
+  repeated float predictions = 1;
+}

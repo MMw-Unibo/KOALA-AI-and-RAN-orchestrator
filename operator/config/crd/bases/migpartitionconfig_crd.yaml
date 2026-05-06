@@ -1,0 +1,216 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: migpartitionconfigs.airan.io
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+spec:
+  group: airan.io
+  names:
+    kind: MIGPartitionConfig
+    listKind: MIGPartitionConfigList
+    plural: migpartitionconfigs
+    singular: migpartitionconfig
+    shortNames:
+      - mpc
+      - migconfig
+  scope: Cluster  # MIG configs are cluster-scoped (per node)
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Node
+          type: string
+          jsonPath: .spec.nodeName
+        - name: GPU
+          type: integer
+          jsonPath: .spec.gpuIndex
+        - name: Profile
+          type: string
+          jsonPath: .spec.desiredProfile
+        - name: State
+          type: string
+          jsonPath: .status.state
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          description: MIGPartitionConfig manages MIG partition configuration for a GPU
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              required:
+                - nodeName
+                - gpuIndex
+              properties:
+                nodeName:
+                  type: string
+                  description: Name of the node where the GPU is located
+                
+                gpuIndex:
+                  type: integer
+                  minimum: 0
+                  description: Index of the GPU on the node
+                
+                gpuUUID:
+                  type: string
+                  description: UUID of the GPU (for verification)
+                
+                migEnabled:
+                  type: boolean
+                  default: true
+                  description: Whether MIG should be enabled on this GPU
+                
+                desiredPartitions:
+                  type: array
+                  description: Desired MIG partition configuration
+                  items:
+                    type: object
+                    required:
+                      - profile
+                    properties:
+                      profile:
+                        type: string
+                        enum: ["1g.5gb", "1g.10gb", "2g.10gb", "2g.20gb", "3g.20gb", "3g.40gb", "4g.40gb", "7g.80gb"]
+                        description: MIG profile for this partition
+                      count:
+                        type: integer
+                        minimum: 1
+                        default: 1
+                        description: Number of partitions with this profile
+                      reservedFor:
+                        type: string
+                        description: Workload this partition is reserved for
+                
+                desiredProfile:
+                  type: string
+                  enum: ["1g.5gb", "1g.10gb", "2g.10gb", "2g.20gb", "3g.20gb", "3g.40gb", "4g.40gb", "7g.80gb", "mixed"]
+                  description: Shorthand for uniform partition profile (alternative to desiredPartitions)
+                
+                allowReconfiguration:
+                  type: boolean
+                  default: false
+                  description: Allow automatic reconfiguration when workload requirements change
+                
+                reconfigurationWindow:
+                  type: object
+                  description: Time window when reconfiguration is allowed
+                  properties:
+                    startHour:
+                      type: integer
+                      minimum: 0
+                      maximum: 23
+                    endHour:
+                      type: integer
+                      minimum: 0
+                      maximum: 23
+                    daysOfWeek:
+                      type: array
+                      items:
+                        type: string
+                        enum: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+                
+                preservePartitionsOnDelete:
+                  type: boolean
+                  default: false
+                  description: Keep partitions when this resource is deleted
+
+            status:
+              type: object
+              properties:
+                state:
+                  type: string
+                  enum: ["Pending", "Configuring", "Ready", "Error", "Reconfiguring"]
+                  description: Current state of the MIG configuration
+                
+                migEnabled:
+                  type: boolean
+                  description: Whether MIG is currently enabled
+                
+                currentPartitions:
+                  type: array
+                  description: Currently configured partitions
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: Partition ID
+                      uuid:
+                        type: string
+                        description: GPU Instance UUID
+                      profile:
+                        type: string
+                        description: MIG profile
+                      computeInstanceId:
+                        type: integer
+                        description: Compute instance ID
+                      available:
+                        type: boolean
+                        description: Whether the partition is available
+                      allocatedTo:
+                        type: string
+                        description: Workload using this partition
+                      memoryMB:
+                        type: integer
+                        description: Memory in MB
+                
+                gpuInfo:
+                  type: object
+                  description: GPU information
+                  properties:
+                    name:
+                      type: string
+                    uuid:
+                      type: string
+                    memoryTotalMB:
+                      type: integer
+                    driverVersion:
+                      type: string
+                    cudaVersion:
+                      type: string
+                
+                lastReconfiguration:
+                  type: string
+                  format: date-time
+                  description: Time of last reconfiguration
+                
+                lastError:
+                  type: string
+                  description: Last error message
+                
+                observedGeneration:
+                  type: integer
+                  format: int64
+                
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                        enum: ["True", "False", "Unknown"]
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string

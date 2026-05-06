@@ -1,0 +1,237 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: qosawareworkloads.airan.io
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+spec:
+  group: airan.io
+  names:
+    kind: QoSAwareWorkload
+    listKind: QoSAwareWorkloadList
+    plural: qosawareworkloads
+    singular: qosawareworkload
+    shortNames:
+      - qaw
+      - qaws
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              required:
+                - workloadRef
+                - qosLevel
+              properties:
+                workloadRef:
+                  type: object
+                  required:
+                    - kind
+                    - name
+                  properties:
+                    kind:
+                      type: string
+                      enum: [Deployment, StatefulSet]
+                    name:
+                      type: string
+                
+                qosLevel:
+                  type: string
+                  enum: [high, medium, low]
+                  description: |
+                    QoS level determines priority and scaling type:
+                    - high: srsran namespace, vertical scaling only
+                    - medium: ricplt/ricxapp namespace, vertical scaling only  
+                    - low: ai-workloads namespace, horizontal scaling only
+                
+                slaTarget:
+                  type: object
+                  properties:
+                    latencyMs:
+                      type: integer
+                      minimum: 1
+                    throughputRps:
+                      type: integer
+                    availability:
+                      type: string
+                
+                placement:
+                  type: object
+                  properties:
+                    requiredNodeLabels:
+                      type: array
+                      items:
+                        type: string
+                      description: "Node labels required (ran, gpu, computing)"
+                    preferredNodeLabels:
+                      type: array
+                      items:
+                        type: string
+                    antiAffinityLabels:
+                      type: array
+                      items:
+                        type: string
+                      description: "Avoid nodes with these labels"
+                    nodeSelector:
+                      type: object
+                      additionalProperties:
+                        type: string
+                
+                scaling:
+                  type: object
+                  properties:
+                    vertical:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                          description: "Only for RAN workloads (srsran, ricplt, ricxapp)"
+                        minResources:
+                          type: object
+                          properties:
+                            cpu:
+                              type: string
+                            memory:
+                              type: string
+                        maxResources:
+                          type: object
+                          properties:
+                            cpu:
+                              type: string
+                            memory:
+                              type: string
+                    horizontal:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                          description: "Only for non-RAN workloads (ai-workloads)"
+                        minReplicas:
+                          type: integer
+                          minimum: 1
+                        maxReplicas:
+                          type: integer
+                          minimum: 1
+                
+                gpuRequirements:
+                  type: object
+                  properties:
+                    migProfile:
+                      type: string
+                      enum: ["1g.5gb", "1g.10gb", "2g.10gb", "2g.20gb", "3g.20gb", "3g.40gb", "4g.40gb", "7g.80gb"]
+                    dedicated:
+                      type: boolean
+                    count:
+                      type: integer
+                      minimum: 1
+                
+                proactiveConfig:
+                  type: object
+                  properties:
+                    gpuFallbackToCPU:
+                      type: boolean
+                      description: "Allow CPU fallback when GPU unavailable"
+                    postponeDuringPeak:
+                      type: boolean
+                      description: "Defer scaling during RAN traffic peaks"
+                
+                digitalTwin:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    predictionHorizonMinutes:
+                      type: integer
+                    minConfidence:
+                      type: string
+                
+                metricsSource:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [prometheus, custom]
+                    endpoint:
+                      type: string
+                    latencyMetricName:
+                      type: string
+            
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum: [Pending, Running, Scaling, Degraded, Error]
+                currentLatencyMs:
+                  type: integer
+                slaCompliant:
+                  type: boolean
+                lastScalingAction:
+                  type: string
+                lastScalingTime:
+                  type: string
+                  format: date-time
+                currentReplicas:
+                  type: integer
+                allocatedResources:
+                  type: object
+                  properties:
+                    cpu:
+                      type: string
+                    memory:
+                      type: string
+                deferred:
+                  type: boolean
+                  description: "True if workload is deferred due to traffic peak"
+                deferredUntil:
+                  type: string
+                  format: date-time
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: QoS
+          type: string
+          jsonPath: .spec.qosLevel
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Latency
+          type: integer
+          jsonPath: .status.currentLatencyMs
+        - name: SLA
+          type: boolean
+          jsonPath: .status.slaCompliant
+        - name: Deferred
+          type: boolean
+          jsonPath: .status.deferred
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp

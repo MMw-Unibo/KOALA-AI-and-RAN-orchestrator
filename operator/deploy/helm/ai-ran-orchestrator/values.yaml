@@ -1,0 +1,54 @@
+replicaCount: 1
+
+image:
+  repository: ai-ran-orchestrator
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: "ai-ran-orchestrator"
+
+# Orchestrator configuration
+config:
+  reconciliationPeriod: "30s"
+  digitalTwinAddress: "digital-twin-service.airan-system:50051"
+  prometheusURL: "http://prometheus-k8s.monitoring:9090"
+  logLevel: 2
+
+# Node labels for your cluster
+nodeLabels:
+  ran: "ran"
+  gpu: "gpu"
+  computing: "computing"
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+nodeSelector:
+  kubernetes.io/os: linux
+
+tolerations:
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+affinity: {}
+
+# Prometheus metrics
+metrics:
+  enabled: true
+  port: 8080
+
+# Leader election for HA
+leaderElection:
+  enabled: true

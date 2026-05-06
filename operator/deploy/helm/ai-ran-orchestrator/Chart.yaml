@@ -1,0 +1,14 @@
+apiVersion: v2
+name: ai-ran-orchestrator
+description: QoS-Aware Resource Orchestrator for AI-RAN workloads
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - ai-ran
+  - orchestrator
+  - kubernetes
+  - 5g
+  - ran
+maintainers:
+  - name: AI-RAN Team

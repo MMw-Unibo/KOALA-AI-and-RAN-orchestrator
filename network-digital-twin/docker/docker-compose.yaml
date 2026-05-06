@@ -1,0 +1,30 @@
+services:
+# Physical Layer Simulation=========================================================================================
+  cell:
+    image: ${REPO}/koala-ai-and-ran-cell:${VERSION}-5060-mock
+    build:
+      context: ./cell/5060-mock
+      dockerfile: Dockerfile
+
+# Model Layer=======================================================================================================
+  ndt-model-1h:
+    image: ${REPO}/koala-ai-and-ran-ndt-model:${VERSION}-5060-1h
+    build:
+      context: ./ndt-model/5060-1h
+      dockerfile: Dockerfile
+
+  ndt-model-30m:
+    image: ${REPO}/koala-ndt-model:${VERSION}-5060-30m
+    build:
+      context: ./ndt-model/5060-30m
+      dockerfile: Dockerfile
+
+# API Layer==========================================================================================================
+  ndt-api:
+    image: ${REPO}/koala-ai-and-ran-ndt-api:${VERSION}
+    build:
+      context: ./ndt-api
+      dockerfile: Dockerfile  
+
+    
+    

@@ -1,0 +1,511 @@
+# QoSAwareWorkload definitions for ACTUAL deployed workloads
+# Based on: kubectl get pod -A
+
+---
+# ============================================
+# HIGH PRIORITY: srsran namespace (ran=true nodes)
+# Vertical scaling only
+# ============================================
+
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: srsran-gnb
+  namespace: srsran
+  labels:
+    app.kubernetes.io/name: srsran-gnb
+    airan.io/priority: high
+spec:
+  workloadRef:
+    kind: Deployment
+    name: srsran-gnb
+  
+  qosLevel: high
+  
+  slaTarget:
+    latencyMs: 10  # Critical near-RT requirement
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "2"
+        memory: "4Gi"
+      maxResources:
+        cpu: "16"
+        memory: "32Gi"
+    horizontal:
+      enabled: false  # RAN: vertical only
+  
+  digitalTwin:
+    enabled: true
+    predictionHorizonMinutes: 60
+  
+  metricsSource:
+    type: prometheus
+    latencyMetricName: "srsran_gnb_processing_latency_ms"
+
+---
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: srsue-1
+  namespace: srsran
+  labels:
+    app.kubernetes.io/name: srsue
+    airan.io/priority: high
+spec:
+  workloadRef:
+    kind: Deployment
+    name: srsue-1
+  
+  qosLevel: high
+  
+  slaTarget:
+    latencyMs: 10
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "1"
+        memory: "2Gi"
+      maxResources:
+        cpu: "8"
+        memory: "16Gi"
+    horizontal:
+      enabled: false
+
+---
+# ============================================
+# MEDIUM PRIORITY: ricplt namespace (ran=true nodes)
+# Near-RT RIC Platform - Vertical scaling only
+# ============================================
+
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: ricplt-e2mgr
+  namespace: ricplt
+  labels:
+    app.kubernetes.io/name: e2mgr
+    airan.io/priority: medium
+spec:
+  workloadRef:
+    kind: Deployment
+    name: deployment-ricplt-e2mgr
+  
+  qosLevel: medium
+  
+  slaTarget:
+    latencyMs: 100
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "250m"
+        memory: "512Mi"
+      maxResources:
+        cpu: "4"
+        memory: "8Gi"
+    horizontal:
+      enabled: false
+
+---
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: ricplt-e2term
+  namespace: ricplt
+  labels:
+    app.kubernetes.io/name: e2term
+    airan.io/priority: medium
+spec:
+  workloadRef:
+    kind: Deployment
+    name: deployment-ricplt-e2term-alpha
+  
+  qosLevel: medium
+  
+  slaTarget:
+    latencyMs: 50  # E2 termination is latency-sensitive
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "500m"
+        memory: "1Gi"
+      maxResources:
+        cpu: "8"
+        memory: "16Gi"
+    horizontal:
+      enabled: false
+
+---
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: ricplt-a1mediator
+  namespace: ricplt
+  labels:
+    app.kubernetes.io/name: a1mediator
+    airan.io/priority: medium
+spec:
+  workloadRef:
+    kind: Deployment
+    name: deployment-ricplt-a1mediator
+  
+  qosLevel: medium
+  
+  slaTarget:
+    latencyMs: 200
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "100m"
+        memory: "256Mi"
+      maxResources:
+        cpu: "2"
+        memory: "4Gi"
+    horizontal:
+      enabled: false
+
+---
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: ricplt-submgr
+  namespace: ricplt
+  labels:
+    app.kubernetes.io/name: submgr
+    airan.io/priority: medium
+spec:
+  workloadRef:
+    kind: Deployment
+    name: deployment-ricplt-submgr
+  
+  qosLevel: medium
+  
+  slaTarget:
+    latencyMs: 100
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "100m"
+        memory: "256Mi"
+      maxResources:
+        cpu: "2"
+        memory: "4Gi"
+    horizontal:
+      enabled: false
+
+---
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: ricplt-rtmgr
+  namespace: ricplt
+  labels:
+    app.kubernetes.io/name: rtmgr
+    airan.io/priority: medium
+spec:
+  workloadRef:
+    kind: Deployment
+    name: deployment-ricplt-rtmgr
+  
+  qosLevel: medium
+  
+  slaTarget:
+    latencyMs: 100
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "100m"
+        memory: "256Mi"
+      maxResources:
+        cpu: "2"
+        memory: "4Gi"
+    horizontal:
+      enabled: false
+
+---
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: ricplt-appmgr
+  namespace: ricplt
+  labels:
+    app.kubernetes.io/name: appmgr
+    airan.io/priority: medium
+spec:
+  workloadRef:
+    kind: Deployment
+    name: deployment-ricplt-appmgr
+  
+  qosLevel: medium
+  
+  slaTarget:
+    latencyMs: 500
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "100m"
+        memory: "256Mi"
+      maxResources:
+        cpu: "2"
+        memory: "4Gi"
+    horizontal:
+      enabled: false
+
+---
+# ============================================
+# MEDIUM PRIORITY: ricxapp namespace (ran=true nodes)
+# xApps - Vertical scaling only
+# ============================================
+
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: xapp-anomaly-detector
+  namespace: ricxapp
+  labels:
+    app.kubernetes.io/name: anomaly-detector
+    airan.io/priority: medium
+spec:
+  workloadRef:
+    kind: Deployment
+    name: xapp-anomaly-detector
+  
+  qosLevel: medium
+  
+  slaTarget:
+    latencyMs: 100  # Near-RT: 10ms-1s
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "500m"
+        memory: "1Gi"
+      maxResources:
+        cpu: "4"
+        memory: "8Gi"
+    horizontal:
+      enabled: false
+  
+  digitalTwin:
+    enabled: true
+    predictionHorizonMinutes: 30
+
+---
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: xapp-resource-allocator
+  namespace: ricxapp
+  labels:
+    app.kubernetes.io/name: resource-allocator
+    airan.io/priority: medium
+spec:
+  workloadRef:
+    kind: Deployment
+    name: xapp-resource-allocator
+  
+  qosLevel: medium
+  
+  slaTarget:
+    latencyMs: 100
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "500m"
+        memory: "1Gi"
+      maxResources:
+        cpu: "4"
+        memory: "8Gi"
+    horizontal:
+      enabled: false
+
+---
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: xapp-traffic-predictor
+  namespace: ricxapp
+  labels:
+    app.kubernetes.io/name: traffic-predictor
+    airan.io/priority: medium
+spec:
+  workloadRef:
+    kind: Deployment
+    name: xapp-traffic-predictor
+  
+  qosLevel: medium
+  
+  slaTarget:
+    latencyMs: 200
+  
+  placement:
+    requiredNodeLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: true
+      minResources:
+        cpu: "500m"
+        memory: "1Gi"
+      maxResources:
+        cpu: "4"
+        memory: "8Gi"
+    horizontal:
+      enabled: false
+
+---
+# ============================================
+# LOW PRIORITY: ai-workloads namespace (gpu/computing nodes)
+# Horizontal scaling only
+# Subject to deferral during RAN traffic peaks
+# ============================================
+
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: inference-standard-gpu
+  namespace: ai-workloads
+  labels:
+    app.kubernetes.io/name: inference-standard-gpu
+    airan.io/priority: low
+spec:
+  workloadRef:
+    kind: Deployment
+    name: inference-standard-gpu
+  
+  qosLevel: low
+  
+  slaTarget:
+    latencyMs: 1000  # Best-effort
+  
+  placement:
+    requiredNodeLabels:
+      - computing
+    preferredNodeLabels:
+      - gpu
+    antiAffinityLabels:
+      - ran  # Avoid RAN-only nodes
+  
+  scaling:
+    vertical:
+      enabled: false  # Non-RAN: no vertical
+    horizontal:
+      enabled: true   # Non-RAN: horizontal only
+      minReplicas: 1
+      maxReplicas: 5
+  
+  gpuRequirements:
+    count: 1
+  
+  proactiveConfig:
+    gpuFallbackToCPU: true      # Fallback if GPU unavailable
+    postponeDuringPeak: true    # DEFER during RAN traffic peaks
+  
+  digitalTwin:
+    enabled: true
+    predictionHorizonMinutes: 60
+
+---
+apiVersion: airan.io/v1alpha1
+kind: QoSAwareWorkload
+metadata:
+  name: training-large-gpu
+  namespace: ai-workloads
+  labels:
+    app.kubernetes.io/name: training-large-gpu
+    airan.io/priority: low
+spec:
+  workloadRef:
+    kind: Deployment
+    name: training-large-gpu
+  
+  qosLevel: low
+  
+  slaTarget:
+    latencyMs: 30000  # 30 seconds - very tolerant for training
+  
+  placement:
+    requiredNodeLabels:
+      - computing
+      - gpu
+    antiAffinityLabels:
+      - ran
+  
+  scaling:
+    vertical:
+      enabled: false
+    horizontal:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+  
+  gpuRequirements:
+    count: 1
+  
+  proactiveConfig:
+    gpuFallbackToCPU: false     # Training needs GPU
+    postponeDuringPeak: true    # DEFER during RAN peaks
+  
+  digitalTwin:
+    enabled: true
+    predictionHorizonMinutes: 60

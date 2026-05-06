@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+service Inference {
+   rpc make_inference(InferenceRequest) returns (InferenceResult) {}
+}
+
+message InferenceRequest {
+  google.protobuf.Timestamp datetime  = 1;
+}
+
+message InferenceResult {
+   repeated float predictions = 1;
+}
